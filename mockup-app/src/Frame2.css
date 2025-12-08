@@ -1,0 +1,81 @@
+.frame2-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30px 40px;
+  gap: 20px;
+}
+
+.search-bar {
+  background: #e0e0e0;
+  border-radius: 8px;
+  padding: 14px 24px;
+  flex: 1;
+  max-width: 400px;
+  color: #666;
+  font-size: 16px;
+  font-family: 'Arial', sans-serif;
+}
+
+.wallet-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.connect-wallet-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connect-wallet-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #ffffff;
+}
+
+
+.frame2-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  padding: 20px 40px;
+}
+
+.content-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+}
+
+.card-placeholder {
+  background: #1a1a1a;
+  border-radius: 12px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #444;
+}
+
+.card-placeholder p {
+  color: #666;
+  font-size: 14px;
+  font-family: 'Arial', sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+
+.card-title-bar {
+  background: #2a2a2a;
+  border-radius: 20px;
+  height: 40px;
+}
