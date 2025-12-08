@@ -1121,9 +1121,11 @@ app.get('/api/audius/health', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.API_PORT || process.env.PORT || 3001;
+const HOST = process.env.API_HOST || 'localhost';
+
 app.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
+  console.log(`API server running on http://${HOST}:${PORT}`);
   console.log(`Anthropic API: ${ANTHROPIC_API_KEY ? 'configured' : 'NOT SET'}`);
   console.log(`OpenSea MCP: ${OPENSEA_BEARER_TOKEN ? 'configured' : 'NOT SET'}`);
   console.log(`Google Veo API: ${GOOGLE_API_KEY ? 'configured' : 'NOT SET'}`);
