@@ -35,7 +35,7 @@ function App() {
   }
 
   if (currentFrame === 2) {
-    return <Frame2 onConnect={() => setCurrentFrame('home')} />
+    return <Frame2 onConnect={() => setCurrentFrame(3)} />
   }
 
   return (
