@@ -7,27 +7,16 @@ const videos = [
   '/a5.mp4', '/a6.mp4', '/a7.mp4', '/a8.mp4'
 ]
 
-function VideoCard({ video }) {
+function VideoCard({ video, shouldPlay }) {
   const videoRef = useRef(null)
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          videoRef.current?.play()
-        } else {
-          videoRef.current?.pause()
-        }
-      },
-      { threshold: 0.5 }
-    )
-
-    if (videoRef.current) {
-      observer.observe(videoRef.current)
+    if (shouldPlay) {
+      videoRef.current?.play()
+    } else {
+      videoRef.current?.pause()
     }
-
-    return () => observer.disconnect()
-  }, [])
+  }, [shouldPlay])
 
   return (
     <div className="video-card">
@@ -41,37 +30,41 @@ function VideoCard({ video }) {
 
 function Frame3() {
   const [page, setPage] = useState(0)
-  const scrollRef = useRef(null)
+  const [isScrolling, setIsScrolling] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
   const videosPerPage = 2
   const totalPages = Math.ceil(videos.length / videosPerPage)
 
-  const videoRows = []
-  for (let i = 0; i < videos.length; i += videosPerPage) {
-    videoRows.push(videos.slice(i, i + videosPerPage))
-  }
+  const currentVideos = videos.slice(
+    page * videosPerPage,
+    (page + 1) * videosPerPage
+  )
 
-  const handleScroll = () => {
-    if (!scrollRef.current) return
-    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
-    const scrollableHeight = scrollHeight - clientHeight
-    if (scrollableHeight > 0) {
-      const newPage = Math.round((scrollTop / scrollableHeight) * (totalPages - 1))
-      if (newPage !== page) {
-        setPage(newPage)
-      }
+  const nextVideos = videos.slice(
+    (page + 1) * videosPerPage,
+    (page + 2) * videosPerPage
+  )
+
+  const handleWheel = (e) => {
+    e.preventDefault()
+    if (isScrolling) return
+
+    setIsScrolling(true)
+    setTimeout(() => setIsScrolling(false), 400)
+
+    if (e.deltaY > 0) {
+      // Scrolling down (inverted: go to previous)
+      const newPage = Math.max(0, page - 1)
+      setPage(newPage)
+    } else if (e.deltaY < 0) {
+      // Scrolling up (inverted: go to next)
+      const newPage = Math.min(totalPages - 1, page + 1)
+      setPage(newPage)
     }
   }
 
   const goToPage = (newPage) => {
     setPage(newPage)
-    if (scrollRef.current) {
-      const { scrollHeight, clientHeight } = scrollRef.current
-      const scrollableHeight = scrollHeight - clientHeight
-      scrollRef.current.scrollTo({
-        top: (newPage / (totalPages - 1)) * scrollableHeight,
-        behavior: 'smooth'
-      })
-    }
   }
 
   return (
@@ -84,20 +77,52 @@ function Frame3() {
           <div className="wallet-info">
             <span className="balance">20000.056</span>
             <img src="/logo.png" alt="Mute" className="token-logo" />
-            <div className="avatar">
-              <img src="/pfp.jpeg" alt="Profile" />
+            <div className="avatar-wrapper">
+              <div className="avatar" onClick={() => setShowProfileModal(!showProfileModal)}>
+                <img src="/pfp.jpeg" alt="Profile" />
+              </div>
+              {showProfileModal && (
+                <>
+                  <div className="modal-overlay" onClick={() => setShowProfileModal(false)} />
+                  <div className="profile-modal">
+                    <div className="modal-pfp">
+                      <img src="/pfp.jpeg" alt="Profile" />
+                    </div>
+                    <nav className="profile-menu">
+                      <a href="#" className="menu-item">Home</a>
+                      <a href="#" className="menu-item">Vault</a>
+                      <a href="#" className="menu-item">Following</a>
+                      <a href="#" className="menu-item">Create</a>
+                      <a href="#" className="menu-item">Notifications</a>
+                      <a href="#" className="menu-item">Grants</a>
+                    </nav>
+                    <div className="profile-actions">
+                      <a href="#" className="action-item">Edit</a>
+                      <a href="#" className="action-item">Disconnect</a>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>
 
-        <div className="frame3-scroll-area" ref={scrollRef} onScroll={handleScroll}>
-          {videoRows.map((row, rowIndex) => (
-            <div className="video-row" key={rowIndex}>
-              {row.map((video) => (
-                <VideoCard key={video} video={video} />
+        <div className="frame3-content-area" onWheel={handleWheel}>
+          <div className="main-videos" key={page}>
+            {currentVideos.map((video) => (
+              <VideoCard key={video} video={video} shouldPlay={true} />
+            ))}
+          </div>
+
+          {nextVideos.length > 0 && (
+            <div className="preview-strip" key={`preview-${page}`}>
+              {nextVideos.map((video) => (
+                <div className="preview-box" key={video}>
+                  <video src={video} muted playsInline preload="metadata" />
+                </div>
               ))}
             </div>
-          ))}
+          )}
         </div>
 
         <div className="paginator">
