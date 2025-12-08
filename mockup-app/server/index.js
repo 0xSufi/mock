@@ -87,19 +87,47 @@ app.post('/api/chat', async (req, res) => {
     // System prompt for Liquid AI Assistant
     const systemPrompt = `You are Liquid, an AI assistant specialized in NFTs, crypto tokens, and creative content generation for the MUTE platform.
 
-Your capabilities include:
-- Searching and recommending NFT collections from OpenSea
-- Analyzing NFT trends and pricing data
-- Suggesting creative scenes for video generation
-- Helping users find reference images for their projects
-- Providing information about crypto tokens and wallets
+CRITICAL - YOU MUST USE TOOLS FOR ANY NFT REQUEST:
+When a user asks ANYTHING about NFTs (show, find, search, display, list, explore, collections, etc.), you MUST use the appropriate tool. DO NOT just describe NFTs in text - the UI will display them from the tool results.
 
-IMPORTANT - TOOL USAGE:
-- To load/display individual NFTs from a collection, use the "search_items" tool with the collection slug. This returns actual NFT images.
-- Use "get_collections" only for collection metadata (floor price, stats, etc.), not for displaying NFT images.
-- Use "search_items" with collection parameter to get individual NFT items with images.
+AVAILABLE TOOLS AND WHEN TO USE THEM:
 
-When users ask about NFTs or want to see items from a collection, use search_items to get real NFT images that can be displayed.
+1. **search** - AI-powered search (BEST for general queries)
+   - Use for: "show me X", "find X NFTs", "display X"
+   - Parameter: query (natural language string)
+   - Returns: NFTs, collections, and tokens matching the query
+
+2. **search_collections** - Find collections by name
+   - Use for: "find collections named X", "what collections have X in the name"
+   - Parameter: query (string)
+   - Returns: Collection slugs and names (minimal info)
+
+3. **get_collections** - Get detailed collection info WITH sample NFT images
+   - Use AFTER search_collections to get images
+   - Parameters: slugs (array), includes: ["sample_items", "basic_stats"]
+   - Returns: Full collection data with sample NFT images
+
+4. **search_items** - Search individual NFTs
+   - Use for: specific NFT searches
+   - Parameter: query (string)
+   - Returns: Minimal info (id, name, collection) - NO IMAGES
+
+5. **get_items** - Get full NFT details with images
+   - Use AFTER search_items to get images
+   - Parameters: items (array of {contractAddress, tokenId, chain})
+   - Returns: Full NFT data with imageUrl
+
+6. **get_trending_collections** - Get trending/popular collections
+   - Use for: "trending", "popular", "hot" collections
+   - Parameter: timeframe (ONE_HOUR, ONE_DAY, SEVEN_DAYS, THIRTY_DAYS)
+
+RECOMMENDED WORKFLOWS:
+- "Show me Mutant Ape NFTs" → Use search(query: "Mutant Ape NFTs")
+- "Find collections with Mutant Ape" → Use search_collections(query: "Mutant Ape"), then get_collections with sample_items
+- "What's trending?" → Use get_trending_collections(timeframe: "ONE_DAY")
+- "Floor price of BAYC?" → Use get_collections(slugs: ["boredapeyachtclub"], includes: ["basic_stats"])
+
+IMPORTANT: After using tools, give a brief response. NFT images automatically appear in the OpenSea panel. Do NOT list NFTs in text.
 
 Be helpful, concise, and focus on actionable suggestions for creative projects.`;
 
@@ -143,6 +171,10 @@ Be helpful, concise, and focus on actionable suggestions for creative projects.`
                 try {
                   const parsed = JSON.parse(item.text);
                   console.log('Parsing MCP result, keys:', Object.keys(parsed));
+                  // Log first item sample for debugging
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    console.log('First array item sample:', JSON.stringify(parsed[0]).slice(0, 500));
+                  }
 
                   // Handle search_items response (array of items)
                   if (parsed.results && Array.isArray(parsed.results)) {
@@ -202,14 +234,112 @@ Be helpful, concise, and focus on actionable suggestions for creative projects.`
                     }
                   }
 
+                  // Handle AI-powered search response (can be an array at top level)
+                  if (parsed.nfts && Array.isArray(parsed.nfts)) {
+                    console.log('Found nfts array from search with', parsed.nfts.length, 'items');
+                    for (const nft of parsed.nfts) {
+                      fetchedNFTs.push({
+                        identifier: nft.id || nft.identifier || nft.tokenId,
+                        tokenId: nft.tokenId,
+                        contractAddress: nft.contractAddress,
+                        chain: nft.chain || 'ethereum',
+                        name: nft.name || `#${nft.id || nft.tokenId}`,
+                        image_url: nft.imageUrl || nft.image_url || nft.thumbnailUrl,
+                        collection: nft.collection?.slug || nft.collectionSlug || nft.collection,
+                      });
+                    }
+                  }
+
+                  // Handle search results that return as an array at root level
+                  if (Array.isArray(parsed)) {
+                    console.log('Found root array with', parsed.length, 'items');
+                    for (const item of parsed) {
+                      // Could be NFT item, collection, or other entity
+                      if (item.tokenId || item.contractAddress || item.imageUrl) {
+                        // Looks like an NFT
+                        fetchedNFTs.push({
+                          identifier: item.id || item.identifier || item.tokenId,
+                          tokenId: item.tokenId,
+                          contractAddress: item.contractAddress,
+                          chain: item.chain || 'ethereum',
+                          name: item.name || `#${item.id || item.tokenId}`,
+                          image_url: item.imageUrl || item.image_url || item.thumbnailUrl,
+                          collection: item.collection?.slug || item.collectionSlug || item.collection,
+                        });
+                      } else if (item.slug) {
+                        // Looks like a collection
+                        fetchedNFTs.push({
+                          identifier: item.slug,
+                          name: item.name || item.slug,
+                          image_url: item.imageUrl || item.image_url,
+                          collection: item.slug,
+                        });
+                      }
+                    }
+                  }
+
+                  // Handle search_collections response (collectionsByQuery)
+                  if (parsed.collectionsByQuery && Array.isArray(parsed.collectionsByQuery)) {
+                    console.log('Found collectionsByQuery with', parsed.collectionsByQuery.length, 'items');
+                    for (const col of parsed.collectionsByQuery) {
+                      fetchedNFTs.push({
+                        identifier: col.slug,
+                        name: col.name || col.slug,
+                        image_url: col.imageUrl || col.image_url,
+                        collection: col.slug,
+                      });
+                    }
+                  }
+
+                  // Handle get_collections with sample_items
+                  if (parsed.collections && Array.isArray(parsed.collections)) {
+                    for (const col of parsed.collections) {
+                      // If collection has sample_items, add those as individual NFTs
+                      if (col.sampleItems && Array.isArray(col.sampleItems)) {
+                        console.log(`Found ${col.sampleItems.length} sample items for collection ${col.slug}`);
+                        for (const item of col.sampleItems) {
+                          fetchedNFTs.push({
+                            identifier: item.id || item.tokenId,
+                            tokenId: item.tokenId,
+                            contractAddress: item.contractAddress,
+                            chain: item.chain || 'ethereum',
+                            name: item.name || `${col.name} #${item.tokenId}`,
+                            image_url: item.imageUrl || item.image_url || item.thumbnailUrl,
+                            collection: col.slug,
+                          });
+                        }
+                      } else if (fetchedNFTs.length === 0) {
+                        // Fallback: add collection image if no sample items
+                        fetchedNFTs.push({
+                          identifier: col.slug,
+                          name: col.name || col.slug,
+                          image_url: col.imageUrl,
+                          collection: col.slug,
+                          floor_price: col.stats?.floorPrice?.native?.unit,
+                        });
+                      }
+                    }
+                  }
+
                   // Handle itemsByQuery response from search_items
                   if (parsed.itemsByQuery && Array.isArray(parsed.itemsByQuery)) {
                     console.log('Found itemsByQuery with', parsed.itemsByQuery.length, 'items');
+                    if (parsed.itemsByQuery[0]) {
+                      console.log('First item keys:', Object.keys(parsed.itemsByQuery[0]));
+                      console.log('First item sample:', JSON.stringify(parsed.itemsByQuery[0]).slice(0, 500));
+                    }
                     for (const nft of parsed.itemsByQuery) {
+                      // Try multiple possible image field locations
+                      const imageUrl = nft.imageUrl || nft.image_url || nft.displayImageUrl ||
+                                      nft.display_image_url || nft.thumbnailUrl || nft.thumbnail_url ||
+                                      nft.metadata?.imageUrl || nft.metadata?.image || nft.metadata?.image_url;
                       fetchedNFTs.push({
                         identifier: nft.id || nft.identifier || nft.tokenId,
-                        name: nft.name || nft.metadata?.name || `#${nft.id || nft.identifier}`,
-                        image_url: nft.imageUrl || nft.image_url || nft.metadata?.imageUrl,
+                        tokenId: nft.tokenId,
+                        contractAddress: nft.contractAddress,
+                        chain: nft.chain?.identifier || 'ethereum',
+                        name: nft.name || nft.metadata?.name || `#${nft.id || nft.identifier || nft.tokenId}`,
+                        image_url: imageUrl,
                         collection: nft.collection?.slug || nft.collectionSlug || nft.collection,
                       });
                     }
@@ -259,6 +389,59 @@ Be helpful, concise, and focus on actionable suggestions for creative projects.`
     }
 
     console.log(`Fetched ${fetchedNFTs.length} NFTs via MCP tools`);
+
+    // Filter out non-art NFTs (DeFi positions, domains, etc.)
+    const originalCount = fetchedNFTs.length;
+    fetchedNFTs = fetchedNFTs.filter(nft => !shouldExcludeNFT(nft));
+    if (fetchedNFTs.length < originalCount) {
+      console.log(`Filtered out ${originalCount - fetchedNFTs.length} non-art NFTs, ${fetchedNFTs.length} remaining`);
+    }
+
+    // Enrich NFTs without images by calling get_items
+    const nftsNeedingImages = fetchedNFTs.filter(nft => !nft.image_url && nft.contractAddress && nft.tokenId);
+    if (nftsNeedingImages.length > 0 && mcpClient) {
+      console.log(`Fetching images for ${nftsNeedingImages.length} NFTs...`);
+      try {
+        // Build items array for get_items
+        const items = nftsNeedingImages.slice(0, 20).map(nft => ({
+          contractAddress: nft.contractAddress,
+          tokenId: nft.tokenId,
+          chain: nft.chain || 'ethereum',
+        }));
+        console.log('Requesting get_items with:', JSON.stringify(items.slice(0, 2)));
+
+        const itemsResult = await mcpClient.callTool({
+          name: 'get_items',
+          arguments: { items },
+        });
+
+        if (itemsResult.content && Array.isArray(itemsResult.content)) {
+          for (const item of itemsResult.content) {
+            if (item.type === 'text' && item.text) {
+              try {
+                const parsed = JSON.parse(item.text);
+                const items = parsed.items || [];
+                console.log(`Got detailed info for ${items.length} items`);
+
+                // Update fetchedNFTs with image URLs
+                for (const itemDetail of items) {
+                  const matchingNft = fetchedNFTs.find(
+                    n => n.tokenId === itemDetail.tokenId && n.contractAddress === itemDetail.contractAddress
+                  );
+                  if (matchingNft && itemDetail.imageUrl) {
+                    matchingNft.image_url = itemDetail.imageUrl;
+                  }
+                }
+              } catch (e) {
+                console.log('Error parsing get_items result:', e.message);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('Error fetching item details:', e.message);
+      }
+    }
 
     // Close MCP client
     if (mcpClient) {
@@ -321,7 +504,44 @@ app.get('/api/health', (req, res) => {
 // Popular PFP collections
 const POPULAR_COLLECTIONS = ['pudgypenguins', 'boredapeyachtclub', 'azuki', 'doodles-official', 'cryptopunks', 'milady', 'degods'];
 
-// Proxy endpoint for OpenSea NFTs - uses MCP tools
+// Collections to filter out (not art/PFP - e.g. DeFi positions, domains, etc.)
+const EXCLUDED_COLLECTIONS = [
+  'uniswap-v3-positions',
+  'uniswap-v4-positions',
+  'ens',
+  'unstoppable-domains',
+  'lido',
+  'aave',
+  'compound',
+  'maker',
+  'wrapped',
+  'curve',
+  'sushiswap',
+  'balancer',
+];
+
+// Check if an NFT should be filtered out
+function shouldExcludeNFT(nft) {
+  const collection = (nft.collection || nft.collectionSlug || '').toLowerCase();
+  const name = (nft.name || '').toLowerCase();
+
+  // Check against excluded collections
+  for (const excluded of EXCLUDED_COLLECTIONS) {
+    if (collection.includes(excluded)) return true;
+  }
+
+  // Filter out NFTs that look like DeFi positions based on name
+  if (name.includes('uniswap')) return true;
+  if (name.includes('position') && (name.includes('v3') || name.includes('v4'))) return true;
+  if (name.includes('liquidity') && name.includes('pool')) return true;
+
+  // NOTE: Don't filter by missing image - the image URL might be in a different field
+  // that we haven't parsed yet, or might be fetched separately
+
+  return false;
+}
+
+// Proxy endpoint for OpenSea NFTs - uses MCP tools to get actual NFT items
 app.get('/api/opensea/collection/:slug/nfts', async (req, res) => {
   let mcpClient = null;
   try {
@@ -331,45 +551,57 @@ app.get('/api/opensea/collection/:slug/nfts', async (req, res) => {
     // Connect to OpenSea MCP
     mcpClient = await createOpenSeaMCPClient();
 
-    // Use get_collections with popular slugs to get their images
-    const slugsToFetch = slug === 'trending' ? POPULAR_COLLECTIONS.slice(0, limit) : [slug, ...POPULAR_COLLECTIONS.slice(0, limit - 1)];
-
+    // Use get_collections with sample_items to get actual NFT images
     const result = await mcpClient.callTool({
       name: 'get_collections',
       arguments: {
-        slugs: slugsToFetch,
-        includes: ['basic_stats'],
+        slugs: [slug],
+        includes: ['sample_items', 'basic_stats'],
       },
     });
 
-    console.log('MCP get_collections result:', JSON.stringify(result, null, 2).slice(0, 3000));
+    console.log('MCP get_collections (with sample_items) for:', slug);
 
-    await mcpClient.close();
+    let nfts = [];
 
     // Parse the result
     const content = result.content;
-    let nfts = [];
-
     if (Array.isArray(content)) {
       for (const item of content) {
         if (item.type === 'text' && item.text) {
           try {
             const parsed = JSON.parse(item.text);
-            console.log('Parsed response keys:', Object.keys(parsed));
 
-            // Handle collections array
+            // Handle collections array with sample_items
             const collections = parsed.collections || [];
-            console.log(`Found ${collections.length} collections`);
-
-            for (const col of collections.slice(0, limit)) {
-              nfts.push({
-                identifier: col.slug,
-                name: col.name || col.slug,
-                image_url: col.imageUrl,
-                display_image_url: col.imageUrl,
-                collection: col.slug,
-                floor_price: col.stats?.floorPrice?.native?.unit,
-              });
+            for (const col of collections) {
+              // Add sample items as individual NFTs
+              if (col.sampleItems && Array.isArray(col.sampleItems)) {
+                console.log(`Found ${col.sampleItems.length} sample items for ${col.slug}`);
+                for (const nft of col.sampleItems.slice(0, limit)) {
+                  nfts.push({
+                    identifier: nft.tokenId || nft.id,
+                    tokenId: nft.tokenId,
+                    contractAddress: nft.contractAddress,
+                    name: nft.name || `${col.name} #${nft.tokenId}`,
+                    image_url: nft.imageUrl || nft.image_url || nft.thumbnailUrl,
+                    display_image_url: nft.imageUrl || nft.image_url,
+                    collection: col.slug,
+                    chain: nft.chain || 'ethereum',
+                  });
+                }
+              }
+              // If no sample items, use collection image as fallback
+              if (nfts.length === 0 && col.imageUrl) {
+                nfts.push({
+                  identifier: col.slug,
+                  name: col.name || col.slug,
+                  image_url: col.imageUrl,
+                  display_image_url: col.imageUrl,
+                  collection: col.slug,
+                  floor_price: col.stats?.floorPrice?.native?.unit,
+                });
+              }
             }
           } catch (e) {
             console.log('Parse error:', e.message);
@@ -378,7 +610,9 @@ app.get('/api/opensea/collection/:slug/nfts', async (req, res) => {
       }
     }
 
-    console.log(`Returning ${nfts.length} NFTs`);
+    await mcpClient.close();
+
+    console.log(`Returning ${nfts.length} NFTs for collection ${slug}`);
     res.json({ nfts });
   } catch (error) {
     console.error('OpenSea MCP proxy error:', error);

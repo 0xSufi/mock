@@ -13,13 +13,16 @@
 }
 
 .balance {
-  color: #ffffff;
-  font-size: 18px;
-  font-family: 'Arial', sans-serif;
+  color: #999;
+  font-size: 14px;
+  font-family: 'SF Mono', 'Roboto Mono', 'Consolas', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 .token-logo {
-  height: 24px;
+  height: 29px;
   width: auto;
 }
 

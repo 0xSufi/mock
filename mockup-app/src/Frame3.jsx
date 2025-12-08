@@ -28,7 +28,7 @@ function VideoCard({ video, shouldPlay }) {
   )
 }
 
-function Frame3() {
+function Frame3({ onDisconnect, onCreate, onHome }) {
   const [page, setPage] = useState(0)
   const [isScrolling, setIsScrolling] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
@@ -75,7 +75,7 @@ function Frame3() {
             <span>Search stories, creators</span>
           </div>
           <div className="wallet-info">
-            <span className="balance">20000.056</span>
+            <span className="balance">20,000.05</span>
             <img src="/logo.png" alt="Mute" className="token-logo" />
             <div className="avatar-wrapper">
               <div className="avatar" onClick={() => setShowProfileModal(!showProfileModal)}>
@@ -89,16 +89,16 @@ function Frame3() {
                       <img src="/pfp.jpeg" alt="Profile" />
                     </div>
                     <nav className="profile-menu">
-                      <a href="#" className="menu-item">Home</a>
+                      <a href="#" className="menu-item" onClick={onHome}>Home</a>
                       <a href="#" className="menu-item">Vault</a>
                       <a href="#" className="menu-item">Following</a>
-                      <a href="#" className="menu-item">Create</a>
+                      <a href="#" className="menu-item" onClick={onCreate}>Create</a>
                       <a href="#" className="menu-item">Notifications</a>
                       <a href="#" className="menu-item">Grants</a>
                     </nav>
                     <div className="profile-actions">
                       <a href="#" className="action-item">Edit</a>
-                      <a href="#" className="action-item">Disconnect</a>
+                      <a href="#" className="action-item" onClick={onDisconnect}>Disconnect</a>
                     </div>
                   </div>
                 </>

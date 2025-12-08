@@ -40,42 +40,122 @@
   border-color: #ffffff;
 }
 
-
-.frame2-content {
+.frame2-content-area {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-videos {
   display: flex;
   justify-content: center;
   gap: 30px;
   padding: 20px 40px;
+  animation: fadeSlideIn 0.4s ease-out;
 }
 
-.content-card {
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.video-card {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  width: 300px;
+  width: 375px;
 }
 
-.card-placeholder {
-  background: #1a1a1a;
+.video-preview {
   border-radius: 12px;
   height: 200px;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a1a;
+}
+
+.video-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.veo-badge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #888;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.preview-strip {
   display: flex;
-  align-items: center;
   justify-content: center;
-  border: 1px dashed #444;
+  gap: 30px;
+  padding: 5px 40px 0;
+  animation: fadeSlideIn 0.4s ease-out;
 }
 
-.card-placeholder p {
-  color: #666;
-  font-size: 14px;
-  font-family: 'Arial', sans-serif;
-  text-align: center;
-  padding: 20px;
-}
-
-.card-title-bar {
-  background: #2a2a2a;
+.preview-box {
+  width: 375px;
+  height: 60px;
   border-radius: 20px;
-  height: 40px;
+  overflow: hidden;
+  background: #1a1a1a;
+  position: relative;
+}
+
+.preview-box::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent 0%, #000 100%);
+  pointer-events: none;
+}
+
+.preview-box video {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.paginator {
+  position: absolute;
+  bottom: 30px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.page-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: #444;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease;
+}
+
+.page-dot:hover {
+  background: #666;
+}
+
+.page-dot.active {
+  background: #fff;
 }

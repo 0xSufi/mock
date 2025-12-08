@@ -99,6 +99,8 @@
   display: flex;
   gap: 15px;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-interface {
@@ -108,6 +110,7 @@
   border: 1px solid #333;
   border-radius: 12px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .chat-messages {
@@ -116,30 +119,36 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   min-height: 0;
 }
 
 .chat-messages::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: #222;
+  background: transparent;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
   background: #444;
-  border-radius: 3px;
+  border-radius: 2px;
 }
 
-.chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.chat-input-area {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+  gap: 10px;
 }
 
 .message {
   display: flex;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .message.user {
@@ -147,35 +156,38 @@
 }
 
 .message-avatar {
-  width: 30px;
-  height: 30px;
-  background: #333;
+  width: 28px;
+  height: 28px;
+  background: #222;
+  border: 1px solid #444;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 
 .message-content {
-  background: #222;
-  border-radius: 12px;
-  padding: 12px;
-  max-width: 80%;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 10px 12px;
+  max-width: 85%;
   overflow-wrap: break-word;
   word-break: break-word;
 }
 
 .message.user .message-content {
-  background: #2a4a3a;
+  background: #1a3a2a;
+  border-color: #2a4a3a;
 }
 
 .message-content p {
-  color: #ccc;
-  font-size: 12px;
-  margin: 0 0 8px 0;
-  line-height: 1.4;
+  color: #e0e0e0;
+  font-size: 13px;
+  margin: 0 0 6px 0;
+  line-height: 1.5;
 }
 
 .message-content p:last-child {
@@ -183,25 +195,19 @@
 }
 
 .message-content ul {
-  margin: 8px 0;
-  padding-left: 20px;
+  margin: 6px 0;
+  padding-left: 18px;
 }
 
 .message-content li {
-  color: #999;
-  font-size: 11px;
-  margin-bottom: 4px;
-}
-
-.chat-input-area {
-  display: flex;
-  gap: 10px;
-  padding: 15px;
-  border-top: 1px solid #333;
+  color: #bbb;
+  font-size: 12px;
+  margin-bottom: 3px;
+  line-height: 1.4;
 }
 
 .chat-input {
-  flex: 1;
+  flex: 0.55;
   background: #111;
   border: 1px solid #444;
   border-radius: 8px;
@@ -215,17 +221,65 @@
 }
 
 .send-btn {
-  background: #444;
+  background: #00d9a0;
   border: none;
   border-radius: 8px;
-  color: #fff;
-  padding: 10px 20px;
+  color: #000;
+  padding: 10px 18px;
   font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .send-btn:hover {
-  background: #555;
+  background: #00f0b0;
+}
+
+.send-btn:disabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+}
+
+.stop-btn {
+  background: #ff4444;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.stop-btn:hover {
+  background: #ff6666;
+}
+
+.stop-btn.compact {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.clear-btn.icon {
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #888;
+  padding: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-btn.icon:hover {
+  border-color: #ff6666;
+  color: #ff6666;
+  background: rgba(255, 102, 102, 0.1);
 }
 
 .side-panels {
@@ -237,12 +291,14 @@
 
 .opensea-panel-small {
   flex: 1;
+  overflow: hidden;
 }
 
 .nft-grid-small {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  overflow: hidden;
 }
 
 .nft-item-small .nft-image {
@@ -547,8 +603,12 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   min-height: 0;
+}
+
+.opensea-panel {
+  overflow: hidden;
 }
 
 .pagination {
@@ -716,10 +776,36 @@
 
 .audius-tracks {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex: 1;
-  overflow-x: auto;
   padding: 4px 0;
+}
+
+.audius-nav-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.audius-nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #00d9a0;
+}
+
+.audius-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .audius-track {
@@ -741,8 +827,8 @@
 }
 
 .audius-track.active {
-  background: rgba(204, 51, 255, 0.2);
-  border: 1px solid rgba(204, 51, 255, 0.5);
+  background: transparent;
+  border: 1px solid #00d9a0;
 }
 
 .track-artwork {
@@ -869,17 +955,20 @@
 }
 
 .publish-btn {
-  background: transparent;
-  border: 1px solid #fff;
+  background: #00d9a0;
+  border: none;
   border-radius: 8px;
-  color: #fff;
+  color: #000;
   padding: 8px 20px;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .publish-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #00f0b0;
 }
 
 /* Compact chat for Create tab */
@@ -893,19 +982,39 @@
 
 .chat-messages.compact {
   flex: 1;
-  min-height: 120px;
+  min-height: 0;
   max-height: none;
   padding: 10px;
   gap: 8px;
   overflow-y: auto;
 }
 
+.chat-messages.compact .message-content {
+  padding: 8px 10px;
+}
+
+.chat-messages.compact .message-content p {
+  font-size: 12px;
+  margin: 0 0 4px 0;
+}
+
+.chat-messages.compact .message-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+
 .chat-input-area.compact {
+  display: flex;
+  align-items: center;
   padding: 10px;
   border-top: 1px solid #333;
+  gap: 10px;
 }
 
 .chat-input-area.compact .chat-input {
+  width: 55%;
+  flex: none;
   font-size: 12px;
   padding: 8px 12px;
 }

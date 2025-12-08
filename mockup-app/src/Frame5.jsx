@@ -6,7 +6,7 @@ import { getTrendingTracks, searchTracks, formatDuration } from './services/audi
 
 const API_URL = 'http://localhost:3001'
 
-function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [] }) {
+function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [], onClear }) {
   const [nfts, setNfts] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -74,6 +74,10 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
   const handleSearch = (e) => {
     e.preventDefault()
     const query = searchQuery.toLowerCase().trim()
+    if (!query) return
+
+    // Reset external mode so the search triggers a load
+    setShowingExternal(false)
 
     // Find matching collection from popular ones
     const match = POPULAR_PFP_COLLECTIONS.find(c =>
@@ -82,7 +86,7 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
 
     if (match) {
       setSelectedCollection(match)
-    } else if (query) {
+    } else {
       // Try the query as a collection slug directly
       setSelectedCollection(query)
     }
@@ -95,10 +99,26 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
     onCollectionChange?.(newCollection)
   }
 
+  const handleClear = () => {
+    setSearchQuery('')
+    setShowingExternal(false)
+    setSelectedCollection('pudgypenguins')
+    setCurrentPage(0)
+    onClear?.()
+    loadNFTs('pudgypenguins')
+  }
+
   if (compact) {
     return (
       <div className="panel opensea-panel-small">
-        <h3>OpenSea</h3>
+        <div className="panel-header-row">
+          <h3>OpenSea</h3>
+          <button className="clear-btn icon" onClick={handleClear} title="Clear search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+          </button>
+        </div>
         <form onSubmit={handleSearch} className="search-nfts">
           <input
             type="text"
@@ -147,7 +167,14 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
 
   return (
     <div className="panel opensea-panel">
-      <h3>OpenSea</h3>
+      <div className="panel-header-row">
+        <h3>OpenSea</h3>
+        <button className="clear-btn icon" onClick={handleClear} title="Clear search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+        </button>
+      </div>
       <form onSubmit={handleSearch} className="search-nfts">
         <input
           type="text"
@@ -224,9 +251,17 @@ function Frame5({ onBack }) {
   const [chatSidePanel, setChatSidePanel] = useState('opensea') // 'opensea' or 'veo'
   const [chatFetchedNFTs, setChatFetchedNFTs] = useState([]) // NFTs fetched via chat/MCP
 
-  // Chat state
-  const [chatMessages, setChatMessages] = useState([
-    {
+  // Chat state - load from localStorage if available
+  const [chatMessages, setChatMessages] = useState(() => {
+    const saved = localStorage.getItem('liquid-chat-messages')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch (e) {
+        console.error('Failed to parse saved messages:', e)
+      }
+    }
+    return [{
       role: 'assistant',
       content: `Hello! I'm Liquid AI Assistant. I can help you with:
 • Searching NFT collections on OpenSea
@@ -236,8 +271,8 @@ function Frame5({ onBack }) {
 • Finding trending collections
 
 What would you like to create today?`
-    }
-  ])
+    }]
+  })
   const [chatInput, setChatInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef(null)
@@ -264,15 +299,75 @@ What would you like to create today?`
   const [currentTrack, setCurrentTrack] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioProgress, setAudioProgress] = useState(0)
+  const [audiusPage, setAudiusPage] = useState(0)
   const audioRef = useRef(null)
+  const tracksPerPage = 2
+
+  // AbortController for cancelling chat requests
+  const abortControllerRef = useRef(null)
+  // History of user messages for up arrow recall - load from localStorage
+  const [messageHistory, setMessageHistory] = useState(() => {
+    const saved = localStorage.getItem('liquid-input-history')
+    if (saved) {
+      try {
+        return JSON.parse(saved)
+      } catch (e) {
+        console.error('Failed to parse saved input history:', e)
+      }
+    }
+    return []
+  })
+  const [historyIndex, setHistoryIndex] = useState(-1)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setIsLoading(false)
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '⏹ Generation stopped by user.'
+      }])
+    }
+  }
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'ArrowUp' && messageHistory.length > 0) {
+      e.preventDefault()
+      const newIndex = historyIndex < messageHistory.length - 1 ? historyIndex + 1 : historyIndex
+      setHistoryIndex(newIndex)
+      setChatInput(messageHistory[messageHistory.length - 1 - newIndex])
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (historyIndex > 0) {
+        const newIndex = historyIndex - 1
+        setHistoryIndex(newIndex)
+        setChatInput(messageHistory[messageHistory.length - 1 - newIndex])
+      } else if (historyIndex === 0) {
+        setHistoryIndex(-1)
+        setChatInput('')
+      }
+    }
+  }
+
   useEffect(() => {
     scrollToBottom()
   }, [chatMessages])
+
+  // Persist chat messages to localStorage
+  useEffect(() => {
+    localStorage.setItem('liquid-chat-messages', JSON.stringify(chatMessages))
+  }, [chatMessages])
+
+  // Persist input history to localStorage (limit to last 50)
+  useEffect(() => {
+    const trimmed = messageHistory.slice(-50)
+    localStorage.setItem('liquid-input-history', JSON.stringify(trimmed))
+  }, [messageHistory])
 
   // Poll for Veo video completion
   useEffect(() => {
@@ -411,6 +506,7 @@ What would you like to create today?`
   // Audius functions
   const loadTrendingTracks = async () => {
     setAudiusLoading(true)
+    setAudiusPage(0)
     try {
       const tracks = await getTrendingTracks({ limit: 8 })
       setAudiusTracks(tracks)
@@ -424,6 +520,7 @@ What would you like to create today?`
     e.preventDefault()
     if (!audiusSearchQuery.trim()) return
     setAudiusLoading(true)
+    setAudiusPage(0)
     try {
       const tracks = await searchTracks(audiusSearchQuery, { limit: 8 })
       setAudiusTracks(tracks)
@@ -496,8 +593,13 @@ What would you like to create today?`
 
     const userMessage = chatInput.trim()
     setChatInput('')
+    setMessageHistory(prev => [...prev, userMessage])
+    setHistoryIndex(-1)
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setIsLoading(true)
+
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController()
 
     try {
       // Format messages for Claude API
@@ -512,6 +614,7 @@ What would you like to create today?`
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages }),
+        signal: abortControllerRef.current.signal,
       })
 
       const data = await response.json()
@@ -547,6 +650,11 @@ What would you like to create today?`
         }])
       }
     } catch (error) {
+      // Don't show error message if user aborted
+      if (error.name === 'AbortError') {
+        console.log('Request aborted by user')
+        return
+      }
       console.error('Chat error:', error)
       setChatMessages(prev => [...prev, {
         role: 'assistant',
@@ -554,6 +662,7 @@ What would you like to create today?`
       }])
     }
 
+    abortControllerRef.current = null
     setIsLoading(false)
   }
 
@@ -564,7 +673,6 @@ What would you like to create today?`
           <div className="search-bar-outline">
             <span></span>
           </div>
-          <button className="publish-btn">Publish</button>
           <div className="wallet-info">
             <span className="balance">20,000.05</span>
             <img src="/logo.png" alt="Mute" className="token-logo" />
@@ -666,11 +774,14 @@ What would you like to create today?`
                     className="chat-input"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
                     disabled={isLoading}
                   />
-                  <button type="submit" className="send-btn compact" disabled={isLoading || !chatInput.trim()}>
-                    {isLoading ? '...' : '→'}
-                  </button>
+                  {isLoading ? (
+                    <button type="button" className="stop-btn compact" onClick={stopGeneration}>⏹</button>
+                  ) : (
+                    <button type="submit" className="send-btn compact" disabled={!chatInput.trim()}>→</button>
+                  )}
                 </form>
               </div>
 
@@ -741,6 +852,7 @@ What would you like to create today?`
                 collection={openSeaCollection}
                 onCollectionChange={setOpenSeaCollection}
                 externalNFTs={chatFetchedNFTs}
+                onClear={() => setChatFetchedNFTs([])}
               />
             </div>
           )}
@@ -779,11 +891,18 @@ What would you like to create today?`
                     className="chat-input"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={handleInputKeyDown}
                     disabled={isLoading}
                   />
-                  <button type="submit" className="send-btn" disabled={isLoading || !chatInput.trim()}>
-                    {isLoading ? '...' : 'Send'}
-                  </button>
+                  {isLoading ? (
+                    <button type="button" className="stop-btn" onClick={stopGeneration}>
+                      Stop
+                    </button>
+                  ) : (
+                    <button type="submit" className="send-btn" disabled={!chatInput.trim()}>
+                      Send
+                    </button>
+                  )}
                 </form>
               </div>
               <div className="side-panels">
@@ -793,24 +912,68 @@ What would you like to create today?`
                     compact={true}
                     collection={openSeaCollection}
                     onCollectionChange={setOpenSeaCollection}
+                    externalNFTs={chatFetchedNFTs}
+                    onClear={() => setChatFetchedNFTs([])}
                   />
                 ) : (
                   <div className="panel veo-panel">
-                    <h3>Veo</h3>
-                    <div className="veo-prompt">
-                      <p>A lone wanderer gazes at distant mountains beneath a cloudy sky.</p>
+                    <div className="panel-header-row">
+                      <h3>Video</h3>
+                      <div className="provider-toggle">
+                        <button
+                          className={`toggle-btn ${videoProvider === 'veed' ? 'active' : ''}`}
+                          onClick={() => setVideoProvider('veed')}
+                        >VEED</button>
+                        <button
+                          className={`toggle-btn ${videoProvider === 'veo' ? 'active' : ''}`}
+                          onClick={() => setVideoProvider('veo')}
+                        >Veo</button>
+                      </div>
                     </div>
+                    <textarea
+                      className="veo-prompt-input"
+                      value={veoPrompt}
+                      onChange={(e) => setVeoPrompt(e.target.value)}
+                      placeholder={videoProvider === 'veed' ? "Describe movement..." : "Describe your video..."}
+                      disabled={isGenerating}
+                    />
                     <div className="veo-actions">
-                      <button className="veo-btn">+ Add Reference</button>
-                      <button className="veo-btn">+ Add Scene</button>
+                      {videoProvider === 'veo' ? (
+                        <select
+                          className="veo-model-select"
+                          value={veoModel}
+                          onChange={(e) => setVeoModel(e.target.value)}
+                          disabled={isGenerating}
+                        >
+                          <option value="veo-2.0-generate-001">Veo 2</option>
+                          <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast</option>
+                        </select>
+                      ) : (
+                        <span className="provider-info">
+                          {selectedReference ? '✓ Reference' : '⚠ Select image'}
+                        </span>
+                      )}
                     </div>
-                    <div className="veo-preview"></div>
-                    <div className="scene-tabs">
-                      <span className="scene-tab active">Scene 1</span>
-                      <span className="scene-tab">Scene 2</span>
-                      <span className="scene-tab">Scene 3</span>
+                    <div className="veo-preview">
+                      {isGenerating && (
+                        <div className="veo-generating">
+                          <span className="typing-indicator">Generating...</span>
+                        </div>
+                      )}
+                      {currentVideoUrl && (
+                        <video src={currentVideoUrl} controls autoPlay loop />
+                      )}
+                      {currentError && (
+                        <div className="veo-error">{currentError}</div>
+                      )}
                     </div>
-                    <button className="generate-btn full-width">Generate Video</button>
+                    <button
+                      className="generate-btn full-width"
+                      onClick={handleGenerateVideo}
+                      disabled={isGenerating || !veoPrompt.trim() || (videoProvider === 'veed' && !selectedReference)}
+                    >
+                      {isGenerating ? 'Generating...' : `Generate`}
+                    </button>
                   </div>
                 )}
               </div>
@@ -867,21 +1030,33 @@ What would you like to create today?`
               {audiusLoading ? (
                 <span className="audius-loading">Loading...</span>
               ) : (
-                audiusTracks.slice(0, 4).map((track) => (
-                  <div
-                    key={track.id}
-                    className={`audius-track ${currentTrack?.id === track.id ? 'active' : ''}`}
-                    onClick={() => playTrack(track)}
-                  >
-                    <div className="track-meta">
-                      <span className="track-title">{track.title?.slice(0, 20)}{track.title?.length > 20 ? '...' : ''}</span>
-                      <span className="track-artist">{track.artist?.slice(0, 15)}</span>
+                <>
+                  <button
+                    className="audius-nav-btn"
+                    onClick={() => setAudiusPage(p => Math.max(0, p - 1))}
+                    disabled={audiusPage === 0}
+                  >←</button>
+                  {audiusTracks.slice(audiusPage * tracksPerPage, (audiusPage + 1) * tracksPerPage).map((track) => (
+                    <div
+                      key={track.id}
+                      className={`audius-track ${currentTrack?.id === track.id ? 'active' : ''}`}
+                      onClick={() => playTrack(track)}
+                    >
+                      <div className="track-meta">
+                        <span className="track-title">{track.title?.slice(0, 20)}{track.title?.length > 20 ? '...' : ''}</span>
+                        <span className="track-artist">{track.artist?.slice(0, 15)}</span>
+                      </div>
+                      <span className="track-play-icon">
+                        {currentTrack?.id === track.id && isPlaying ? '⏸' : '▶'}
+                      </span>
                     </div>
-                    <span className="track-play-icon">
-                      {currentTrack?.id === track.id && isPlaying ? '⏸' : '▶'}
-                    </span>
-                  </div>
-                ))
+                  ))}
+                  <button
+                    className="audius-nav-btn"
+                    onClick={() => setAudiusPage(p => Math.min(Math.ceil(audiusTracks.length / tracksPerPage) - 1, p + 1))}
+                    disabled={audiusPage >= Math.ceil(audiusTracks.length / tracksPerPage) - 1}
+                  >→</button>
+                </>
               )}
             </div>
 
@@ -899,6 +1074,8 @@ What would you like to create today?`
                 <span className="player-duration">{formatDuration(currentTrack.duration)}</span>
               </div>
             )}
+
+            <button className="publish-btn">Publish</button>
           </div>
         </div>
       </div>
