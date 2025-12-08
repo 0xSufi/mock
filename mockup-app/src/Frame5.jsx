@@ -257,6 +257,21 @@ function Frame5({ onBack }) {
   const [openSeaCollection, setOpenSeaCollection] = useState('pudgypenguins')
   const [chatSidePanel, setChatSidePanel] = useState('opensea') // 'opensea' or 'veo'
   const [chatFetchedNFTs, setChatFetchedNFTs] = useState([]) // NFTs fetched via chat/MCP
+  const [trendingCollections, setTrendingCollections] = useState([])
+
+  // Load trending collections on mount
+  useEffect(() => {
+    const loadTrending = async () => {
+      const collections = await getTopCollections()
+      if (collections && collections.length > 0) {
+        setTrendingCollections(collections)
+        // Set the first one as default
+        const first = collections[0]
+        setOpenSeaCollection(first.collection || first.identifier)
+      }
+    }
+    loadTrending()
+  }, [])
 
   // Chat state - load from localStorage if available
   const [chatMessages, setChatMessages] = useState(() => {
