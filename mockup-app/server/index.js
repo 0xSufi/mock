@@ -64,7 +64,7 @@ function mcpToolsToClaudeTools(mcpTools) {
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { messages, useOpenSeaMCP = true } = req.body;
+    const { messages, useOpenSeaMCP = true, topCollections = false } = req.body;
 
     let mcpClient = null;
     let tools = [];
@@ -81,6 +81,49 @@ app.post('/api/chat', async (req, res) => {
       } catch (mcpError) {
         console.error('Failed to connect to OpenSea MCP:', mcpError);
         // Continue without MCP tools
+      }
+    }
+
+    if (topCollections && mcpClient) {
+      console.log('Fetching top trending collections directly.');
+      try {
+        const result = await mcpClient.callTool({
+          name: 'get_trending_collections',
+          arguments: { timeframe: 'ONE_DAY' },
+        });
+
+        const fetchedCollections = [];
+        const content = result.content;
+        if (Array.isArray(content)) {
+          for (const item of content) {
+            if (item.type === 'text' && item.text) {
+              try {
+                const parsed = JSON.parse(item.text);
+                if (parsed.trendingCollections && Array.isArray(parsed.trendingCollections)) {
+                  for (const col of parsed.trendingCollections) {
+                    fetchedCollections.push({
+                      identifier: col.slug || col.collectionSlug,
+                      name: col.name || col.slug,
+                      image_url: col.imageUrl || col.image_url,
+                      collection: col.slug || col.collectionSlug,
+                      floor_price: col.floorPrice?.native?.unit,
+                    });
+                  }
+                }
+              } catch (e) {
+                console.log('Parse error for topCollections:', e.message);
+              }
+            }
+          }
+        }
+        await mcpClient.close();
+        return res.json({ success: true, collections: fetchedCollections });
+      } catch (error) {
+        console.error('Error fetching trending collections directly:', error);
+        if (mcpClient) {
+          try { await mcpClient.close(); } catch (e) {}
+        }
+        return res.status(500).json({ success: false, error: error.message });
       }
     }
 
