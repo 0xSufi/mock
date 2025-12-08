@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import './Frame5.css'
-import { getNFTsByCollection, POPULAR_PFP_COLLECTIONS } from './services/opensea'
+import { getNFTsByCollection, POPULAR_PFP_COLLECTIONS, getTopCollections } from './services/opensea'
 import { getTrendingTracks, searchTracks, formatDuration } from './services/audius'
 
-const API_URL = 'http://localhost:3001'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
-function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [], onClear }) {
+function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [], onClear, trendingCollections = [] }) {
   const [nfts, setNfts] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -108,6 +108,11 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
     loadNFTs('pudgypenguins')
   }
 
+  // Determine which collections to show in pills
+  const collectionPills = trendingCollections.length > 0
+    ? trendingCollections.slice(0, 5).map(c => ({ slug: c.collection || c.identifier, name: c.name || c.collection }))
+    : POPULAR_PFP_COLLECTIONS.slice(0, 4).map(c => ({ slug: c, name: c.split('-')[0] }));
+
   if (compact) {
     return (
       <div className="panel opensea-panel-small">
@@ -128,13 +133,14 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
           />
         </form>
         <div className="collection-pills">
-          {POPULAR_PFP_COLLECTIONS.slice(0, 3).map(c => (
+          {collectionPills.slice(0, 3).map(c => (
             <button
-              key={c}
-              className={`collection-pill ${selectedCollection === c ? 'active' : ''}`}
-              onClick={() => handleCollectionChange(c)}
+              key={c.slug}
+              className={`collection-pill ${selectedCollection === c.slug ? 'active' : ''}`}
+              onClick={() => handleCollectionChange(c.slug)}
+              title={c.name}
             >
-              {c.split('-')[0]}
+              {c.name.slice(0, 10)}
             </button>
           ))}
         </div>
@@ -184,13 +190,14 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
         />
       </form>
       <div className="collection-pills">
-        {POPULAR_PFP_COLLECTIONS.slice(0, 4).map(c => (
+        {collectionPills.map(c => (
           <button
-            key={c}
-            className={`collection-pill ${selectedCollection === c ? 'active' : ''}`}
-            onClick={() => handleCollectionChange(c)}
+            key={c.slug}
+            className={`collection-pill ${selectedCollection === c.slug ? 'active' : ''}`}
+            onClick={() => handleCollectionChange(c.slug)}
+            title={c.name}
           >
-            {c.split('-')[0]}
+            {c.name.slice(0, 12)}
           </button>
         ))}
       </div>
@@ -853,6 +860,7 @@ What would you like to create today?`
                 onCollectionChange={setOpenSeaCollection}
                 externalNFTs={chatFetchedNFTs}
                 onClear={() => setChatFetchedNFTs([])}
+                trendingCollections={trendingCollections}
               />
             </div>
           )}
@@ -914,6 +922,7 @@ What would you like to create today?`
                     onCollectionChange={setOpenSeaCollection}
                     externalNFTs={chatFetchedNFTs}
                     onClear={() => setChatFetchedNFTs([])}
+                    trendingCollections={trendingCollections}
                   />
                 ) : (
                   <div className="panel veo-panel">

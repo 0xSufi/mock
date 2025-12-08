@@ -1,5 +1,5 @@
 // Use backend proxy for OpenSea API calls
-const BACKEND_URL = 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Mock NFT data for fallback when API fails - using placeholder images
 const MOCK_NFTS = {
@@ -67,6 +67,29 @@ export async function getNFTsByCollection(collectionSlug, limit = 20) {
     console.error('OpenSea API Error (using mock data):', error);
     // Return mock data as fallback
     return getMockNFTs(collectionSlug, limit);
+  }
+}
+
+export async function getTopCollections() {
+  try {
+    const response = await fetch(`${BACKEND_URL}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topCollections: true })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch top collections');
+    }
+    
+    const data = await response.json();
+    if (data.success && data.collections) {
+      return data.collections;
+    }
+    return [];
+  } catch (error) {
+    console.error('Error fetching top collections:', error);
+    return [];
   }
 }
 
