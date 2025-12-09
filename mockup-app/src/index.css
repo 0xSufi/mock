@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   min-height: 100vh;
   display: flex;
@@ -18,4 +24,23 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  width: 100%;
+  height: 100%;
+}
+
+/* Responsive root styles */
+@media (max-width: 768px) {
+  body {
+    background-color: #000;
+  }
+
+  #root {
+    padding: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    background-color: #000;
+  }
 }

@@ -56,7 +56,8 @@ function Home({ onNavigate }) {
       <div className="screen">
         <header className="home-header">
           <div className="search-bar">
-            <span>Search stories, creators</span>
+            <span className="search-text-full">Search stories, creators</span>
+            <span className="search-text-short">Search</span>
           </div>
           <div className="wallet-info">
             <span className="balance">20,000.05</span>

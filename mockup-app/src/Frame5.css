@@ -406,10 +406,34 @@
   font-size: 12px;
   cursor: pointer;
   margin-bottom: 10px;
+  transition: all 0.2s ease;
 }
 
 .generate-btn.full-width {
   width: 100%;
+}
+
+.generate-btn:hover:not(:disabled) {
+  border-color: #00d9a0;
+  background: rgba(0, 217, 160, 0.1);
+}
+
+.generate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #333;
+}
+
+.generate-btn.generating {
+  background: rgba(0, 217, 160, 0.15);
+  border-color: #00d9a0;
+  color: #00d9a0;
+  animation: pulse-border 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: #00d9a0; }
+  50% { border-color: #00f0b0; }
 }
 
 .preview-image {
@@ -702,7 +726,6 @@
   align-items: center;
   gap: 12px;
   padding: 10px 15px;
-  border-top: 1px solid #333;
   margin-top: auto;
   background: rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
@@ -1096,18 +1119,45 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  flex: 1;
 }
 
 .veo-preview video {
-  width: 100%;
-  height: auto;
-  max-height: 200px;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 8px;
+  object-fit: contain;
 }
 
 .veo-generating {
   padding: 20px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #333;
+  border-top-color: #00d9a0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.generating-text {
+  color: #888;
+  font-size: 12px;
 }
 
 .veo-error {
@@ -1192,4 +1242,467 @@
 .nft-collection-label:hover {
   color: #00f0b0;
   text-decoration: underline;
+}
+
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Tablet breakpoint (768px - 1024px) */
+@media (max-width: 1024px) {
+  .frame5-header {
+    padding: 12px 20px;
+  }
+
+  .creator-content {
+    padding: 0 20px 10px;
+  }
+
+  .creator-panels {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .chat-panel {
+    max-width: 100%;
+    flex: 0 0 auto;
+    min-height: 200px;
+  }
+
+  .veo-panel {
+    flex: 0 0 auto;
+    min-height: 300px;
+  }
+
+  .opensea-panel {
+    flex: 0 0 auto;
+  }
+
+  .chat-layout {
+    flex-direction: column;
+  }
+
+  .chat-interface {
+    flex: 0 0 auto;
+    min-height: 300px;
+    max-height: 400px;
+  }
+
+  .side-panels {
+    flex: 0 0 auto;
+    flex-direction: row;
+  }
+
+  .nft-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .audius-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .audius-tracks {
+    flex: 1 1 100%;
+    order: 3;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .audius-player {
+    margin-left: 0;
+  }
+
+  .publish-btn {
+    margin-left: auto;
+  }
+}
+
+/* Small tablet / large phone (600px - 768px) */
+@media (max-width: 768px) {
+  .frame5-header {
+    padding: 10px 15px;
+    gap: 10px;
+  }
+
+  .search-bar-outline {
+    display: none;
+  }
+
+  .wallet-info {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .creator-content {
+    padding: 0 15px 10px;
+  }
+
+  .creator-title {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .creator-title h1 {
+    font-size: 18px;
+  }
+
+  .creator-tabs {
+    gap: 15px;
+  }
+
+  .tab {
+    font-size: 13px;
+  }
+
+  .side-panels {
+    flex-direction: column;
+  }
+
+  .chat-interface {
+    min-height: 250px;
+    max-height: 350px;
+  }
+
+  .nft-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .trending-collections-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .collection-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .collection-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .collection-pill {
+    flex-shrink: 0;
+  }
+
+  .audius-bar {
+    padding: 8px 10px;
+  }
+
+  .audius-track {
+    min-width: 120px;
+    max-width: 140px;
+  }
+
+  .audius-player {
+    padding: 6px 10px;
+  }
+
+  .player-info {
+    min-width: 80px;
+  }
+
+  .player-title {
+    max-width: 80px;
+  }
+
+  .selected-reference {
+    flex-wrap: wrap;
+  }
+}
+
+/* Mobile breakpoint (max 480px) */
+@media (max-width: 480px) {
+  .frame5-header {
+    padding: 8px 12px;
+  }
+
+  .wallet-info .balance {
+    font-size: 12px;
+  }
+
+  .token-logo {
+    width: 16px;
+    height: 16px;
+  }
+
+  .creator-content {
+    padding: 0 12px 8px;
+  }
+
+  .creator-title {
+    margin-bottom: 8px;
+  }
+
+  .creator-title h1 {
+    font-size: 16px;
+  }
+
+  .creator-tabs {
+    gap: 12px;
+  }
+
+  .tab {
+    font-size: 12px;
+  }
+
+  .swap-btn {
+    padding: 3px 8px;
+    font-size: 14px;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .panel h3 {
+    font-size: 13px;
+  }
+
+  .chat-interface {
+    min-height: 200px;
+    max-height: 300px;
+  }
+
+  .chat-messages {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .message-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .message-content {
+    padding: 8px 10px;
+    max-width: 90%;
+  }
+
+  .message-content p {
+    font-size: 12px;
+  }
+
+  .chat-input-area {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .chat-input {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .send-btn,
+  .stop-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .nft-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .nft-image {
+    height: 70px;
+  }
+
+  .trending-collections-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .collection-image {
+    height: 70px;
+  }
+
+  .veo-prompt-input {
+    min-height: 50px;
+    font-size: 11px;
+  }
+
+  .veo-preview {
+    min-height: 200px;
+  }
+
+  .veo-preview video {
+    max-height: 250px;
+  }
+
+  .generate-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+
+  .provider-toggle .toggle-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* Audius bar mobile */
+  .audius-bar {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .audius-logo {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .audius-logo span:last-child {
+    display: none;
+  }
+
+  .audius-trending-btn {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .audius-search input {
+    width: 100px;
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .audius-tracks {
+    gap: 6px;
+  }
+
+  .audius-track {
+    min-width: 100px;
+    max-width: 120px;
+    padding: 5px 8px;
+  }
+
+  .track-title {
+    font-size: 10px;
+  }
+
+  .track-artist {
+    font-size: 9px;
+  }
+
+  .audius-nav-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+  }
+
+  .audius-player {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  .player-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+
+  .player-info {
+    min-width: 60px;
+  }
+
+  .player-title {
+    font-size: 10px;
+    max-width: 60px;
+  }
+
+  .player-duration {
+    font-size: 9px;
+  }
+
+  .publish-btn {
+    padding: 6px 14px;
+    font-size: 11px;
+  }
+
+  .selected-reference {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .selected-reference span {
+    font-size: 10px;
+  }
+
+  .selected-reference img {
+    width: 25px;
+    height: 25px;
+  }
+
+  .reference-header {
+    font-size: 10px;
+  }
+
+  .search-nfts input {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .collection-pill {
+    font-size: 9px;
+    padding: 3px 8px;
+  }
+
+  .pagination {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .page-btn {
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+
+  .page-info {
+    font-size: 10px;
+  }
+}
+
+/* Extra small screens (max 360px) */
+@media (max-width: 360px) {
+  .creator-content {
+    padding: 0 8px 6px;
+  }
+
+  .creator-title h1 {
+    font-size: 14px;
+  }
+
+  .tab {
+    font-size: 11px;
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .audius-bar {
+    padding: 6px;
+  }
+
+  .audius-player {
+    display: none;
+  }
+
+  .audius-track {
+    min-width: 80px;
+    max-width: 100px;
+  }
+
+  .nft-grid,
+  .trending-collections-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .nft-image,
+  .collection-image {
+    height: 60px;
+  }
 }

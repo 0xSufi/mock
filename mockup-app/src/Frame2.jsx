@@ -48,7 +48,8 @@ function Frame2({ onConnect }) {
       <div className="screen">
         <header className="frame2-header">
           <div className="search-bar">
-            <span>Search stories, creators</span>
+            <span className="search-text-full">Search stories, creators</span>
+            <span className="search-text-short">Search</span>
           </div>
           <div className="wallet-section">
             <button className="connect-wallet-btn" onClick={onConnect}>Connect Wallet</button>

@@ -426,6 +426,7 @@ What would you like to create today?`
   const [veedGenerating, setVeedGenerating] = useState(false)
   const [veedVideoUrl, setVeedVideoUrl] = useState(null)
   const [veedError, setVeedError] = useState(null)
+  const [veedOperationId, setVeedOperationId] = useState(null)
 
   // Audius state
   const [audiusTracks, setAudiusTracks] = useState([])
@@ -531,6 +532,39 @@ What would you like to create today?`
     return () => clearInterval(pollInterval)
   }, [veoOperationId, veoGenerating])
 
+  // Poll for VEED video completion
+  useEffect(() => {
+    if (!veedOperationId || !veedGenerating) return
+
+    console.log('Starting VEED polling for operation:', veedOperationId)
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/veed/status/${veedOperationId}`)
+        const data = await response.json()
+
+        console.log('VEED poll response:', data)
+
+        if (data.status === 'completed' || data.status === 'COMPLETED') {
+          console.log('VEED video completed:', data.videoUrl)
+          setVeedVideoUrl(data.videoUrl)
+          setVeedGenerating(false)
+          setVeedOperationId(null)
+        } else if (data.status === 'failed' || data.status === 'FAILED' || !data.success) {
+          console.log('VEED generation failed:', data.error)
+          setVeedError(data.error || 'Video generation failed')
+          setVeedGenerating(false)
+          setVeedOperationId(null)
+        }
+        // Otherwise still processing, continue polling
+      } catch (error) {
+        console.error('VEED poll error:', error)
+      }
+    }, 3000) // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [veedOperationId, veedGenerating])
+
   const generateVideo = async () => {
     if (!veoPrompt.trim() || veoGenerating) return
 
@@ -576,23 +610,36 @@ What would you like to create today?`
   }
 
   const generateVeedVideo = async () => {
-    if (!veoPrompt.trim() || veedGenerating) return
+    console.log('generateVeedVideo called')
+    console.log('veedGenerating:', veedGenerating)
+    console.log('veoPrompt:', veoPrompt)
 
-    if (!selectedReference?.image_url) {
+    if (!veoPrompt.trim() || veedGenerating) {
+      console.log('Early return: empty prompt or already generating')
+      return
+    }
+
+    const imageUrl = selectedReference?.image_url || selectedReference?.display_image_url
+    console.log('imageUrl:', imageUrl)
+
+    if (!imageUrl) {
+      console.log('No reference image, setting error')
       setVeedError('Please select a reference image for VEED image-to-video generation')
       return
     }
 
+    console.log('Setting veedGenerating to true')
     setVeedGenerating(true)
     setVeedError(null)
     setVeedVideoUrl(null)
+    setVeedOperationId(null)
 
     try {
       const response = await fetch(`${API_URL}/api/veed/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageUrl: selectedReference.image_url,
+          imageUrl: imageUrl,
           prompt: veoPrompt,
           aspectRatio: 'portrait',
           duration: '5',
@@ -600,25 +647,35 @@ What would you like to create today?`
       })
 
       const data = await response.json()
+      console.log('VEED generate response:', data)
 
       if (!response.ok) {
         throw new Error(data.error || `Server error: ${response.status}`)
       }
 
-      if (data.success) {
+      if (data.success && data.operationId) {
+        // Server returns operationId for async polling
+        console.log('VEED operation queued:', data.operationId)
+        setVeedOperationId(data.operationId)
+        // Keep veedGenerating true - polling useEffect will set it to false when done
+      } else if (data.success && data.videoUrl) {
+        // Backwards compat: immediate result
         setVeedVideoUrl(data.videoUrl)
+        setVeedGenerating(false)
       } else {
         throw new Error(data.error || 'Video generation failed')
       }
     } catch (error) {
       console.error('VEED generation error:', error)
       setVeedError(error.message || 'Failed to generate video')
+      setVeedGenerating(false)
     }
-
-    setVeedGenerating(false)
   }
 
   const handleGenerateVideo = () => {
+    console.log('handleGenerateVideo called, provider:', videoProvider)
+    console.log('veoPrompt:', veoPrompt)
+    console.log('selectedReference:', selectedReference)
     if (videoProvider === 'veed') {
       generateVeedVideo()
     } else {
@@ -962,8 +1019,11 @@ What would you like to create today?`
                 <div className="veo-preview">
                   {isGenerating && (
                     <div className="veo-generating">
-                      <span className="typing-indicator">
-                        {videoProvider === 'veed' ? 'Generating with VEED...' : 'Generating video...'}
+                      <div className="spinner"></div>
+                      <span className="generating-text">
+                        {videoProvider === 'veed'
+                          ? (veedOperationId ? 'Processing video... (may take 1-2 min)' : 'Queuing request...')
+                          : 'Generating video...'}
                       </span>
                     </div>
                   )}
@@ -975,7 +1035,7 @@ What would you like to create today?`
                   )}
                 </div>
                 <button
-                  className="generate-btn full-width"
+                  className={`generate-btn full-width ${isGenerating ? 'generating' : ''}`}
                   onClick={handleGenerateVideo}
                   disabled={isGenerating || !veoPrompt.trim() || (videoProvider === 'veed' && !selectedReference)}
                 >
@@ -1095,7 +1155,12 @@ What would you like to create today?`
                     <div className="veo-preview">
                       {isGenerating && (
                         <div className="veo-generating">
-                          <span className="typing-indicator">Generating...</span>
+                          <div className="spinner"></div>
+                          <span className="generating-text">
+                            {videoProvider === 'veed'
+                              ? (veedOperationId ? 'Processing...' : 'Queuing...')
+                              : 'Generating...'}
+                          </span>
                         </div>
                       )}
                       {currentVideoUrl && (
@@ -1106,7 +1171,7 @@ What would you like to create today?`
                       )}
                     </div>
                     <button
-                      className="generate-btn full-width"
+                      className={`generate-btn full-width ${isGenerating ? 'generating' : ''}`}
                       onClick={handleGenerateVideo}
                       disabled={isGenerating || !veoPrompt.trim() || (videoProvider === 'veed' && !selectedReference)}
                     >
