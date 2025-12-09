@@ -684,7 +684,11 @@ What would you like to create today?`
   }
 
   const isGenerating = veoGenerating || veedGenerating
-  const currentVideoUrl = videoProvider === 'veed' ? veedVideoUrl : veoVideoUrl
+  const rawVideoUrl = videoProvider === 'veed' ? veedVideoUrl : veoVideoUrl
+  // Prepend API_URL if it's a relative path (starts with /)
+  const currentVideoUrl = rawVideoUrl && rawVideoUrl.startsWith('/')
+    ? `${API_URL}${rawVideoUrl}`
+    : rawVideoUrl
   const currentError = videoProvider === 'veed' ? veedError : veoError
 
   const handleSelectNFT = (nft) => {
