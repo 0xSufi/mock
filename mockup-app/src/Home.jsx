@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import './Home.css'
+import './Frame3.css'
 
 // Sample feed data - videos from friends/followers
 const feedItems = [
@@ -19,6 +20,7 @@ function Home({ onNavigate }) {
   const videoRef = useRef(null)
 
   const currentItem = feedItems[currentIndex]
+  const nextItem = feedItems[currentIndex + 1]
 
   useEffect(() => {
     if (videoRef.current) {
@@ -90,27 +92,29 @@ function Home({ onNavigate }) {
         </header>
 
         <div className="home-feed" onWheel={handleWheel}>
-          <div className="feed-item" key={currentItem.id}>
-            <div className="video-container">
-              <video
-                ref={videoRef}
-                src={currentItem.video}
-                muted
-                loop
-                playsInline
-                autoPlay
-              />
-            </div>
-            <div className="video-caption">
-              <div className="caption-left">
-                <span className="creator-name">@{currentItem.creator}</span>
-                <span className="video-title">{currentItem.title}</span>
-              </div>
-              <div className="caption-right">
-                <span className="likes">{currentItem.likes}</span>
+          <div className="main-videos" key={currentItem.id}>
+            <div className="video-card">
+              <div className="video-preview">
+                <video
+                  ref={videoRef}
+                  src={currentItem.video}
+                  muted
+                  loop
+                  playsInline
+                  autoPlay
+                />
+                <span className="veo-badge">Veo</span>
               </div>
             </div>
           </div>
+
+          {nextItem && (
+            <div className="preview-strip">
+              <div className="preview-box">
+                <video src={nextItem.video} muted playsInline preload="metadata" />
+              </div>
+            </div>
+          )}
 
           <div className="feed-indicator">
             {feedItems.map((_, i) => (
