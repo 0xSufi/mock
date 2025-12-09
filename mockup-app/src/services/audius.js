@@ -1,7 +1,14 @@
-const API_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.VITE_API_HOST && import.meta.env.VITE_API_PORT 
-    ? `http://${import.meta.env.VITE_API_HOST}:${import.meta.env.VITE_API_PORT}` 
-    : 'http://localhost:3001')
+const API_URL = (() => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (import.meta.env.VITE_API_HOST) {
+    const port = import.meta.env.VITE_API_PORT
+    if (port === '443' || !port) {
+      return `https://${import.meta.env.VITE_API_HOST}`
+    }
+    return `https://${import.meta.env.VITE_API_HOST}:${port}`
+  }
+  return 'http://localhost:3001'
+})()
 
 export async function getTrendingTracks(options = {}) {
   const { genre, time = 'week', limit = 10 } = options

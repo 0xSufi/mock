@@ -1,8 +1,15 @@
 // Use backend proxy for OpenSea API calls
-const BACKEND_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.VITE_API_HOST && import.meta.env.VITE_API_PORT 
-    ? `http://${import.meta.env.VITE_API_HOST}:${import.meta.env.VITE_API_PORT}` 
-    : 'http://localhost:3001');
+const BACKEND_URL = (() => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (import.meta.env.VITE_API_HOST) {
+    const port = import.meta.env.VITE_API_PORT
+    if (port === '443' || !port) {
+      return `https://${import.meta.env.VITE_API_HOST}`
+    }
+    return `https://${import.meta.env.VITE_API_HOST}:${port}`
+  }
+  return 'http://localhost:3001'
+})();
 
 // Mock NFT data for fallback when API fails - using placeholder images
 const MOCK_NFTS = {

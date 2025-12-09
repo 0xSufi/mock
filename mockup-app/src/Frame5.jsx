@@ -4,10 +4,18 @@ import './Frame5.css'
 import { getNFTsByCollection, POPULAR_PFP_COLLECTIONS, getTopCollections } from './services/opensea'
 import { getTrendingTracks, searchTracks, formatDuration } from './services/audius'
 
-const API_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.VITE_API_HOST && import.meta.env.VITE_API_PORT 
-    ? `http://${import.meta.env.VITE_API_HOST}:${import.meta.env.VITE_API_PORT}` 
-    : 'http://localhost:3001')
+const API_URL = (() => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
+  if (import.meta.env.VITE_API_HOST) {
+    const port = import.meta.env.VITE_API_PORT
+    // Don't include port for default HTTPS (443) or HTTP (80)
+    if (port === '443' || !port) {
+      return `https://${import.meta.env.VITE_API_HOST}`
+    }
+    return `https://${import.meta.env.VITE_API_HOST}:${port}`
+  }
+  return 'http://localhost:3001'
+})()
 
 function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [], onClear, trendingCollections = [] }) {
   const [nfts, setNfts] = useState([])
