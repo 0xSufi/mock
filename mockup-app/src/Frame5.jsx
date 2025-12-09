@@ -7,24 +7,65 @@ import { getTrendingTracks, searchTracks, formatDuration } from './services/audi
 const API_URL = (() => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
   if (import.meta.env.VITE_API_HOST) {
+    const host = import.meta.env.VITE_API_HOST
     const port = import.meta.env.VITE_API_PORT
-    // Don't include port for default HTTPS (443) or HTTP (80)
-    if (port === '443' || !port) {
-      return `https://${import.meta.env.VITE_API_HOST}`
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1'
+    const protocol = isLocalhost ? 'http' : 'https'
+    if (port === '443' || port === '80' || !port) {
+      return `${protocol}://${host}`
     }
-    return `https://${import.meta.env.VITE_API_HOST}:${port}`
+    return `${protocol}://${host}:${port}`
   }
   return 'http://localhost:3001'
 })()
 
 function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionChange, externalNFTs = [], onClear, trendingCollections = [] }) {
   const [nfts, setNfts] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCollection, setSelectedCollection] = useState(collection || 'pudgypenguins')
+  const [selectedCollection, setSelectedCollection] = useState(collection || '')
   const [currentPage, setCurrentPage] = useState(0)
   const [showingExternal, setShowingExternal] = useState(false)
+  const [showTrendingView, setShowTrendingView] = useState(true)
+  const [trendingNFTs, setTrendingNFTs] = useState([])
+  const [loadingTrending, setLoadingTrending] = useState(false)
   const itemsPerPage = compact ? 4 : 6
+
+  // Load NFTs from trending collections (2 from each)
+  useEffect(() => {
+    if (showTrendingView && trendingNFTs.length === 0 && !loadingTrending) {
+      const loadTrendingNFTs = async () => {
+        setLoadingTrending(true)
+        // Use trending collections if available, otherwise use popular collections
+        const sourceCollections = trendingCollections.length > 0
+          ? trendingCollections.slice(0, compact ? 2 : 3)
+          : POPULAR_PFP_COLLECTIONS.slice(0, compact ? 2 : 3).map(slug => ({ collection: slug, name: slug.split('-')[0] }))
+
+        const allNFTs = []
+
+        for (const col of sourceCollections) {
+          try {
+            const slug = col.collection || col.identifier || col
+            const name = col.name || slug.split('-')[0]
+            const nftsFromCollection = await getNFTsByCollection(slug, 2)
+            // Add collection info to each NFT
+            const nftsWithCollection = nftsFromCollection.map(nft => ({
+              ...nft,
+              collectionSlug: slug,
+              collectionName: name
+            }))
+            allNFTs.push(...nftsWithCollection)
+          } catch (err) {
+            console.error('Failed to load NFTs from', col.collection || col, err)
+          }
+        }
+
+        setTrendingNFTs(allNFTs)
+        setLoadingTrending(false)
+      }
+      loadTrendingNFTs()
+    }
+  }, [showTrendingView, trendingCollections, trendingNFTs.length, loadingTrending, compact])
 
   // Use external NFTs when provided
   useEffect(() => {
@@ -34,6 +75,7 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
       setShowingExternal(true)
       setLoading(false)
       setCurrentPage(0)
+      setShowTrendingView(false)
       // Extract collection name from the first NFT that has it
       const collectionName = externalNFTs.find(nft => nft.collection)?.collection
       if (collectionName) {
@@ -53,10 +95,10 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
   }, [collection])
 
   useEffect(() => {
-    if (!showingExternal) {
+    if (!showingExternal && !showTrendingView && selectedCollection) {
       loadNFTs(selectedCollection)
     }
-  }, [selectedCollection, showingExternal])
+  }, [selectedCollection, showingExternal, showTrendingView])
 
   const loadNFTs = async (collection) => {
     setLoading(true)
@@ -89,6 +131,7 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
 
     // Reset external mode so the search triggers a load
     setShowingExternal(false)
+    setShowTrendingView(false)
 
     // Find matching collection from popular ones
     const match = POPULAR_PFP_COLLECTIONS.find(c =>
@@ -107,16 +150,18 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
     setSelectedCollection(newCollection)
     setSearchQuery('')
     setShowingExternal(false)
+    setShowTrendingView(false)
     onCollectionChange?.(newCollection)
   }
 
   const handleClear = () => {
     setSearchQuery('')
     setShowingExternal(false)
-    setSelectedCollection('pudgypenguins')
+    setSelectedCollection('')
     setCurrentPage(0)
+    setShowTrendingView(true)
+    setTrendingNFTs([])
     onClear?.()
-    loadNFTs('pudgypenguins')
   }
 
   // Determine which collections to show in pills
@@ -155,7 +200,31 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
             </button>
           ))}
         </div>
-        {loading ? (
+        {showTrendingView ? (
+          loadingTrending ? (
+            <div className="loading-nfts">Loading...</div>
+          ) : (
+            <div className="nft-grid-small">
+              {trendingNFTs.slice(0, 4).map((nft, index) => (
+                <div
+                  key={`${nft.collectionSlug}-${nft.identifier || index}`}
+                  className="nft-item-small"
+                  onClick={() => onSelectNFT?.(nft)}
+                >
+                  <div className="nft-image">
+                    {nft.image_url ? (
+                      <img src={nft.image_url} alt={nft.name || 'NFT'} />
+                    ) : nft.display_image_url ? (
+                      <img src={nft.display_image_url} alt={nft.name || 'NFT'} />
+                    ) : (
+                      <div className="nft-placeholder" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : loading ? (
           <div className="loading-nfts">Loading...</div>
         ) : (
           <div className="nft-grid-small">
@@ -212,48 +281,85 @@ function OpenSeaPanel({ onSelectNFT, compact = false, collection, onCollectionCh
           </button>
         ))}
       </div>
-      <div className="reference-header">
-        <span>Collection: <strong>{selectedCollection}</strong></span>
-        <span>{nfts.length} items</span>
-      </div>
-      {loading ? (
-        <div className="loading-nfts">Loading NFTs...</div>
+      {showTrendingView ? (
+        <>
+          <div className="reference-header">
+            <span>Trending</span>
+            <span>{trendingNFTs.length} items</span>
+          </div>
+          {loadingTrending ? (
+            <div className="loading-nfts">Loading trending...</div>
+          ) : (
+            <div className="nft-grid">
+              {trendingNFTs.map((nft, index) => (
+                <div
+                  key={`${nft.collectionSlug}-${nft.identifier || index}`}
+                  className="nft-item"
+                  onClick={() => onSelectNFT?.(nft)}
+                >
+                  <div className="nft-image">
+                    {nft.image_url ? (
+                      <img src={nft.image_url} alt={nft.name || 'NFT'} />
+                    ) : nft.display_image_url ? (
+                      <img src={nft.display_image_url} alt={nft.name || 'NFT'} />
+                    ) : (
+                      <div className="nft-placeholder" />
+                    )}
+                  </div>
+                  <span className="nft-collection-label" onClick={(e) => { e.stopPropagation(); handleCollectionChange(nft.collectionSlug); }}>
+                    {nft.collectionName?.slice(0, 12) || 'View'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <>
-          <div className="nft-grid">
-            {paginatedNfts.map((nft, index) => (
-              <div
-                key={nft.identifier || index}
-                className="nft-item"
-                onClick={() => onSelectNFT?.(nft)}
-              >
-                <div className="nft-image">
-                  {nft.image_url ? (
-                    <img src={nft.image_url} alt={nft.name || 'NFT'} />
-                  ) : nft.display_image_url ? (
-                    <img src={nft.display_image_url} alt={nft.name || 'NFT'} />
-                  ) : (
-                    <div className="nft-placeholder" />
-                  )}
-                </div>
-                <span>Use as Reference</span>
-              </div>
-            ))}
+          <div className="reference-header">
+            <span>Collection: <strong>{selectedCollection}</strong></span>
+            <span>{nfts.length} items</span>
           </div>
-          {totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="page-btn"
-                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                disabled={currentPage === 0}
-              >←</button>
-              <span className="page-info">{currentPage + 1} / {totalPages}</span>
-              <button
-                className="page-btn"
-                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                disabled={currentPage === totalPages - 1}
-              >→</button>
-            </div>
+          {loading ? (
+            <div className="loading-nfts">Loading NFTs...</div>
+          ) : (
+            <>
+              <div className="nft-grid">
+                {paginatedNfts.map((nft, index) => (
+                  <div
+                    key={nft.identifier || index}
+                    className="nft-item"
+                    onClick={() => onSelectNFT?.(nft)}
+                  >
+                    <div className="nft-image">
+                      {nft.image_url ? (
+                        <img src={nft.image_url} alt={nft.name || 'NFT'} />
+                      ) : nft.display_image_url ? (
+                        <img src={nft.display_image_url} alt={nft.name || 'NFT'} />
+                      ) : (
+                        <div className="nft-placeholder" />
+                      )}
+                    </div>
+                    <span>Use as Reference</span>
+                  </div>
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="page-btn"
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                  >←</button>
+                  <span className="page-info">{currentPage + 1} / {totalPages}</span>
+                  <button
+                    className="page-btn"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage === totalPages - 1}
+                  >→</button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
@@ -265,7 +371,7 @@ function Frame5({ onBack }) {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [activeTab, setActiveTab] = useState('create')
   const [selectedReference, setSelectedReference] = useState(null)
-  const [openSeaCollection, setOpenSeaCollection] = useState('pudgypenguins')
+  const [openSeaCollection, setOpenSeaCollection] = useState('')
   const [chatSidePanel, setChatSidePanel] = useState('opensea') // 'opensea' or 'veo'
   const [chatFetchedNFTs, setChatFetchedNFTs] = useState([]) // NFTs fetched via chat/MCP
   const [trendingCollections, setTrendingCollections] = useState([])
@@ -276,9 +382,6 @@ function Frame5({ onBack }) {
       const collections = await getTopCollections()
       if (collections && collections.length > 0) {
         setTrendingCollections(collections)
-        // Set the first one as default
-        const first = collections[0]
-        setOpenSeaCollection(first.collection || first.identifier)
       }
     }
     loadTrending()

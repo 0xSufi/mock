@@ -1116,3 +1116,80 @@
   padding: 10px;
   text-align: center;
 }
+
+/* Trending Collections Grid */
+.trending-collections-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.trending-collections-grid.compact {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.trending-collection-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  text-align: center;
+}
+
+.trending-collection-card:hover {
+  transform: scale(1.05);
+}
+
+.collection-image {
+  background: #333;
+  border-radius: 8px;
+  height: 50px;
+  margin-bottom: 5px;
+  overflow: hidden;
+}
+
+.trending-collections-grid.compact .collection-image {
+  height: 60px;
+  border-radius: 6px;
+}
+
+.collection-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.collection-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a3a2e 0%, #2a4a3e 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00d9a0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.collection-name {
+  color: #888;
+  font-size: 10px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nft-collection-label {
+  color: #00d9a0;
+  font-size: 9px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.nft-collection-label:hover {
+  color: #00f0b0;
+  text-decoration: underline;
+}

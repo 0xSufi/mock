@@ -2,11 +2,14 @@
 const BACKEND_URL = (() => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL
   if (import.meta.env.VITE_API_HOST) {
+    const host = import.meta.env.VITE_API_HOST
     const port = import.meta.env.VITE_API_PORT
-    if (port === '443' || !port) {
-      return `https://${import.meta.env.VITE_API_HOST}`
+    const isLocalhost = host === 'localhost' || host === '127.0.0.1'
+    const protocol = isLocalhost ? 'http' : 'https'
+    if (port === '443' || port === '80' || !port) {
+      return `${protocol}://${host}`
     }
-    return `https://${import.meta.env.VITE_API_HOST}:${port}`
+    return `${protocol}://${host}:${port}`
   }
   return 'http://localhost:3001'
 })();
