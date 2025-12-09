@@ -1160,6 +1160,22 @@
   font-size: 12px;
 }
 
+.progress-bar-container {
+  width: 100%;
+  max-width: 200px;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d9a0, #00f0b0);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
 .veo-error {
   color: #ff6b6b;
   font-size: 11px;

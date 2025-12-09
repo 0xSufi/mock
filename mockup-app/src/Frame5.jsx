@@ -427,6 +427,7 @@ What would you like to create today?`
   const [veedVideoUrl, setVeedVideoUrl] = useState(null)
   const [veedError, setVeedError] = useState(null)
   const [veedOperationId, setVeedOperationId] = useState(null)
+  const [veedProgress, setVeedProgress] = useState(null) // e.g., "4%" or null
 
   // Audius state
   const [audiusTracks, setAudiusTracks] = useState([])
@@ -545,16 +546,23 @@ What would you like to create today?`
 
         console.log('VEED poll response:', data)
 
+        // Update progress if available
+        if (data.progress) {
+          setVeedProgress(data.progress)
+        }
+
         if (data.status === 'completed' || data.status === 'COMPLETED') {
           console.log('VEED video completed:', data.videoUrl)
           setVeedVideoUrl(data.videoUrl)
           setVeedGenerating(false)
           setVeedOperationId(null)
+          setVeedProgress(null)
         } else if (data.status === 'failed' || data.status === 'FAILED' || !data.success) {
           console.log('VEED generation failed:', data.error)
           setVeedError(data.error || 'Video generation failed')
           setVeedGenerating(false)
           setVeedOperationId(null)
+          setVeedProgress(null)
         }
         // Otherwise still processing, continue polling
       } catch (error) {
@@ -1026,9 +1034,14 @@ What would you like to create today?`
                       <div className="spinner"></div>
                       <span className="generating-text">
                         {videoProvider === 'veed'
-                          ? (veedOperationId ? 'Processing video... (may take 1-2 min)' : 'Queuing request...')
+                          ? (veedProgress ? `Generating... ${veedProgress}` : (veedOperationId ? 'Processing...' : 'Queuing...'))
                           : 'Generating video...'}
                       </span>
+                      {videoProvider === 'veed' && veedProgress && (
+                        <div className="progress-bar-container">
+                          <div className="progress-bar-fill" style={{ width: veedProgress }} />
+                        </div>
+                      )}
                     </div>
                   )}
                   {currentVideoUrl && (
@@ -1162,9 +1175,14 @@ What would you like to create today?`
                           <div className="spinner"></div>
                           <span className="generating-text">
                             {videoProvider === 'veed'
-                              ? (veedOperationId ? 'Processing...' : 'Queuing...')
+                              ? (veedProgress ? `${veedProgress}` : (veedOperationId ? 'Processing...' : 'Queuing...'))
                               : 'Generating...'}
                           </span>
+                          {videoProvider === 'veed' && veedProgress && (
+                            <div className="progress-bar-container">
+                              <div className="progress-bar-fill" style={{ width: veedProgress }} />
+                            </div>
+                          )}
                         </div>
                       )}
                       {currentVideoUrl && (
